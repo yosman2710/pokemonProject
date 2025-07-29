@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { register, login } from '../controllers/authenticController.js';
+import { registerUser, login } from '../controllers/authenticController.js';
 
 const router = Router();
-console.log(typeof(register));
+console.log(typeof(registerUser));
 
-router.post('/register', register);
+router.post('/register', registerUser);
 
 router.post('/login', login);
 

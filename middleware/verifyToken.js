@@ -1,25 +1,29 @@
-// middlewares/verifyToken.js
-import jwt from "jsonwebtoken";
-
-export const verifyToken = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-
-    console.log("🔐 Header recibido:", authHeader);
-    if (!authHeader) {
-        console.log("⛔ Token ausente");
-        return res.status(403).json({ error: "Token no proporcionado" });
+import { verifyToken as verifyJwt } from '../services/auth.js';
+import tokenModel from "../models/tokenModel.js";
+export async function verifyToken(req, res, next) {
+    const header = req.headers['authorization'];
+    if (!header) {
+        return res.status(403).json({message: 'No se proporcionó el token'});
     }
 
-    const token = authHeader.split(" ")[1];
-    console.log("📦 Token extraído:", token);
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("✅ Token válido:", decoded);
-        req.user = decoded;
-        next();
-    } catch (err) {
-        console.log("❌ Token inválido:", err.message);
-        return res.status(401).json({ error: "Token inválido o expirado" });
+    const parts = header.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+        return res.status(403).json({message: 'Formato de token inválido'});
     }
-};
+
+    const token = parts[1];
+
+    const decoded = verifyJwt(token);
+    if (!decoded) {
+        return res.status(401).json({message: 'Token inválido o expirado'});
+    }
+    const exists = await tokenModel.findOne({token: token})
+    if (!exists) {
+        return res.status(401).json({message: 'Token revocado o no registrado'});
+    }
+
+
+    req.user = decoded;
+    next();
+}
+

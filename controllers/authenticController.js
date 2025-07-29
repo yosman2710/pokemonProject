@@ -1,28 +1,28 @@
-import {loginUserService, registerUserService} from '../services/auth.services.js';
+import {createUser, validateUser} from '../services/serviceUser.js';
+import {generateToken} from '../services/auth.js';
+import tokenModel from '../models/tokenModel.js';
+
+export const registerUser = async (req, res) => {
+    try {
+        const user = await createUser(req.body);
+        res.status(200).json({message: 'user created successfully.', userId: user._id});
+    }catch(err) {
+        res.status(400).json({error: 'error creating user', errors: err.message});
+    }
+}
 
 export const login = async (req, res) => {
-    const { email, password } = req.body;
-
     try {
-        const user = await loginUserService(email, password);
-        res.status(200).json({
-            ...user,
-            message: 'Login exitoso'
-        });
-    } catch (err) {
-        res.status(err.status || 500).json({
-            error: err.message || 'Error del servidor'
-        });
-    }
-};
+        const user = await validateUser(req.body);
+        const token = generateToken(user._id);
+        await tokenModel.create({
+            userId: user._id,
+            token: token,
+            expiresAt: new Date(Date.now()+ 60 * 60 * 1000),
+        })
 
-export const register = async (req, res) => {
-    const { name, email, password } = req.body;
-     // 👈 Asegúrate de estandarizar esto en el frontend también
-    try {
-        const userId = await registerUserService(name, email, password);
-        res.status(201).json({ message: "Usuario creado correctamente", userId });
-    } catch (err) {
-        res.status(err.status || 500).json({ error: err.message || 'Error interno del servidor' });
+        res.status(200).json({message: 'user login successfully.', userId: user._id, token: token});
+    }catch(err) {
+        res.status(401).json({error: 'error login', errors: err.message});
     }
-};
+}
